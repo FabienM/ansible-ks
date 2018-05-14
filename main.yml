@@ -2,15 +2,70 @@
 - hosts: ks
   remote_user: root
   tasks:
-  - name: General - Add SSH authorized key (FabienM)
+  - name: general - authorize ssh keys
     authorized_key:
       user: root
-      key: https://github.com/fabienm.keys
-  - name: General - Add SSH authorized key (lanfisis)
-    authorized_key:
-      user: root
-      key: https://github.com/lanfisis.keys
-  - name: Fail2ban - install
+      key: "https://github.com/{{item}}.keys"
+    with_items:
+    - fabienm
+    - lanfisis
+  - name: general - apt upgrade
+    apt:
+      update_cache: yes
+      upgrade: yes
+  - name: fail2ban - install
     apt:
       name: fail2ban
       state: present
+  - name: docker - install prerequisites
+    apt:
+      name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+      state: latest
+  - name: docker - install repository key
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+  - name: docker - install repository
+    apt_repository:
+      repo: "deb https://download.docker.com/linux/debian stretch stable"
+  - name: docker - install
+    apt:
+      name: "docker-ce=17.03.2~ce-0~debian-stretch"
+    register: docker
+  - name: docker - mark docker-ce on hold
+    command: "apt-mark hold docker-ce"
+    when: docker.changed
+  - name: k8s - install prerequisites
+    apt:
+      name:
+      - apt-transport-https
+      - curl
+  - name: k8s - install repository key
+    apt_key:
+      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+      state: present
+  - name: k8s - install repository
+    apt_repository:
+      repo: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+  - name: k8s - install kube
+    apt:
+      name:
+      - kubelet
+      - kubeadm
+      - kubectl
+  - name: k8s - configure cgroup driver
+    lineinfile:
+      path: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+      regexp: "^Environment=\"KUBELET_KUBECONFIG_ARGS"
+      line: "Environment=\"KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --cgroup-driver=cgroupfs\""
+    register: k8scgroup
+  - name: k8s - restart
+    systemd:
+      name: kubelet
+      daemon_reload: yes
+      state: restarted
+    when: k8scgroup.changed
