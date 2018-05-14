@@ -1,0 +1,16 @@
+---
+- hosts: ks
+  remote_user: root
+  tasks:
+  - name: General - Add SSH authorized key (FabienM)
+    authorized_key:
+      user: root
+      key: https://github.com/fabienm.keys
+  - name: General - Add SSH authorized key (lanfisis)
+    authorized_key:
+      user: root
+      key: https://github.com/lanfisis.keys
+  - name: Fail2ban - install
+    apt:
+      name: fail2ban
+      state: present
