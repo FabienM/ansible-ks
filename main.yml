@@ -13,9 +13,11 @@
     apt:
       update_cache: yes
       upgrade: yes
-  - name: fail2ban - install
+  - name: general - install base packages
     apt:
-      name: fail2ban
+      name:
+      - fail2ban
+      - sudo
       state: present
   - name: docker - install prerequisites
     apt:
