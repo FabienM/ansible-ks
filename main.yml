@@ -69,3 +69,22 @@
       daemon_reload: yes
       state: restarted
     when: k8scgroup.changed
+  # Disables swap for Kubernetese
+  - name: kubeadm - remove swapfile from /etc/fstab
+    mount:
+      name: swap
+      fstype: swap
+      state: absent
+  - name: kubeadm -  disable swap
+    command: swapoff -a
+    when: ansible_swaptotal_mb > 0
+    #
+  - name: kubeadm - check installation file
+    stat:
+      path: /etc/kubernetes/manifests/kube-apiserver.yaml
+    register: kubeadminstalled
+  - name: kubeadm - init
+    command: "kubeadm init"
+    when: kubeadminstalled == False
+  #- name: kubeadm - authorize pods on same machine than master
+  #  command: "kubectl taint nodes --all node-role.kubernetes.io/master-"
